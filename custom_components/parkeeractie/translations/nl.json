@@ -1,0 +1,19 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Parkeeractie inloggen",
+          "description": "Vul je e-mailadres en wachtwoord in.",
+          "data": {
+            "username": "E-mailadres",
+            "password": "Wachtwoord"
+          }
+        }
+      },
+      "error": {
+        "auth": "Inloggen mislukt. Controleer je gegevens.",
+        "captcha_required": "reCAPTCHA is ingeschakeld; automatiseren niet mogelijk."
+      }
+    }
+  }
+  

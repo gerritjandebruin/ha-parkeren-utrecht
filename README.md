@@ -1,22 +1,30 @@
-# Notice
+# Home Assistant Parkeeractie Utrecht
 
-The component and platforms in this repository are not meant to be used by a
-user, but as a "blueprint" that custom component developers can build
-upon, to make more awesome stuff.
+Deze Home Assistant integratie maakt het mogelijk om parkeerinformatie op te halen van de Parkeeractie Utrecht app en parkeerssessies te starten.
 
-HAVE FUN! 😎
+## Functionaliteit
 
-## Why?
+### Sensoren
+- **Saldo**: Toont het huidige saldo op je parkeeraccount
+- **Tijd resterend**: Toont de resterende tijd van je parkeerproduct (in uren)
 
-This is simple, by having custom_components look (README + structure) the same
-it is easier for developers to help each other and for users to start using them.
+### Binary Sensoren
+- **Parkeerprobleem**: Geeft aan of er een parkeerprobleem is (geen geld of tijd)
 
-If you are a developer and you want to add things to this "blueprint" that you think more
-developers will have use for, please open a PR to add it :)
+### Services
+- **start_parking_session**: Start een parkeerssessie voor een bepaald kenteken
 
-## What?
+## Installatie
 
-This repository contains multiple files, here is a overview:
+1. Kopieer de `parkeeractie` folder naar je `custom_components` directory
+2. Herstart Home Assistant
+3. Ga naar Instellingen → Integraties → Integratie toevoegen
+4. Zoek naar "Parkeeractie" en voeg deze toe
+5. Voer je parkeeractie inloggegevens in
+
+## Configuratie
+
+Na installatie zijn de sensoren en services automatisch beschikbaar. Je kunt automations maken om parkeerssessies te starten op basis van triggers zoals tijd, aanwezigheid, etc.
 
 File | Purpose | Documentation
 -- | -- | --

@@ -1,0 +1,12 @@
+{
+    "domain": "parkeeractie",
+    "name": "Parkeeractie (Utrecht) scraper",
+    "version": "0.1.0",
+    "iot_class": "cloud_polling",
+    "documentation": "https://github.com/gerritjandebruin/parkeeractie",
+    "requirements": ["beautifulsoup4==4.12.3"],
+    "codeowners": ["@gerritjandebruin"],
+    "config_flow": true,
+    "loggers": ["parkeeractie"]
+  }
+  
