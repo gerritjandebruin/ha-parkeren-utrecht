@@ -1,3 +1,5 @@
+"""Constants for Parkeeractie integration."""
+
 DOMAIN = "parkeeractie"
 BASE_URL = "https://parkeerapp.utrecht.nl"
 LOGIN_URL = f"{BASE_URL}/"

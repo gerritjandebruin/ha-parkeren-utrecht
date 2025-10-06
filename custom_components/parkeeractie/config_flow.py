@@ -1,6 +1,8 @@
+"""Config flow for Parkeeractie integration."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -14,9 +16,14 @@ if TYPE_CHECKING:
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Parkeeractie."""
+
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
         errors = {}
         if user_input is not None:
             # Proeflogin
@@ -27,7 +34,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await client.login_and_fetch()
                 return self.async_create_entry(title="Parkeeractie", data=user_input)
-            except Exception as e:
+            except (ValueError, RuntimeError) as e:
                 msg = str(e)
                 if "reCAPTCHA" in msg or "showCaptcha" in msg:
                     errors["base"] = "captcha_required"

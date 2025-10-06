@@ -1,3 +1,5 @@
+"""Parkeeractie integration for Home Assistant."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -25,6 +27,7 @@ START_PARKING_SESSION_SCHEMA = vol.Schema(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Parkeeractie from a config entry."""
     coordinator = ParkeeractieCoordinator(
         hass,
         username=entry.data["username"],
@@ -39,7 +42,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Service om een parkeerssessie te starten."""
         license_plate = call.data["license_plate"]
         end_time = call.data["end_time"]
-        permit_id = call.data.get("permit_id")
 
         # Convert datetime to ISO string
         if isinstance(end_time, datetime):
@@ -49,7 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Use the coordinator's client to start the session
         success = await coordinator.client.start_parking_session(
-            license_plate=license_plate, end_time=end_time_str, permit_id=permit_id
+            license_plate=license_plate, end_time=end_time_str
         )
 
         if success:
@@ -67,7 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload parkeeractie integration."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:

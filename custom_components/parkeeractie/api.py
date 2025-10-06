@@ -1,12 +1,14 @@
+"""API client for Parkeeractie Utrecht parking service."""
+
 from __future__ import annotations
 
 import contextlib
 import html as ihtml
 import json
 import logging
-import os
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 import aiohttp
 from aiohttp import ClientSession
@@ -35,20 +37,24 @@ def _load_relaxed(s: str) -> dict:
     ):
         try:
             return json.loads(candidate)
-        except Exception:
-            pass
+        except (ValueError, json.JSONDecodeError) as e:
+            _LOGGER.debug("Failed to parse JSON candidate: %s", e)
     return json.loads(s1.encode("utf-8").decode("unicode_escape"))
 
 
-def _ensure_www():
+def _ensure_www() -> str:
+    """Ensure www directory exists and return its path."""
     www_dir = "/config/www"
     with contextlib.suppress(Exception):
-        os.makedirs(www_dir, exist_ok=True)
+        Path(www_dir).mkdir(parents=True, exist_ok=True)
     return www_dir
 
 
 class ParkeeractieClient:
+    """Client for interacting with the Parkeeractie Utrecht API."""
+
     def __init__(self, session: ClientSession, username: str, password: str) -> None:
+        """Initialize the client with session and credentials."""
         self._session = session
         self._username = username
         self._password = password
@@ -84,7 +90,8 @@ class ParkeeractieClient:
             return text
 
     async def login_and_fetch(self) -> tuple[float | None, str | None]:
-        # 1) GET "/" – kan óf login óf al ingelogd zijn
+        """Login to the service and fetch saldo and current time data."""
+        # 1) GET "/" - can be login or already logged in
         html = await self._get(LOGIN_URL)
 
         # a) Als we al ingelogd zijn, staat de payload direct in de pagina
@@ -105,17 +112,18 @@ class ParkeeractieClient:
             if saldo is not None or current_time is not None:
                 return saldo, current_time
 
-            # Nog steeds geen login/init en geen ingelogde payload → debugdump + error
-            path = os.path.join(_ensure_www(), "parkeeractie_login_debug.html")
+            # Nog steeds geen login/init en geen ingelogde payload -> debugdump + error
+            path = Path(_ensure_www()) / "parkeeractie_login_debug.html"
             try:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(html)
+                path.write_text(html, encoding="utf-8")
                 _LOGGER.error(
-                    "Kon login.init payload niet vinden. HTML opgeslagen naar %s (open via /local/parkeeractie_login_debug.html)",
+                    "Kon login.init payload niet vinden. "
+                    "HTML opgeslagen naar %s "
+                    "(open via /local/parkeeractie_login_debug.html)",
                     path,
                 )
-            except Exception as e:
-                _LOGGER.exception("Kon debug HTML niet schrijven: %s", e)
+            except Exception:
+                _LOGGER.exception("Kon debug HTML niet schrijven")
             msg = "Kon login.init payload niet vinden."
             raise ValueError(msg)
 
@@ -219,7 +227,9 @@ class ParkeeractieClient:
                 )
         return saldo, current_time
 
-    async def start_parking_session(self, license_plate: str, end_time: str) -> bool:
+    async def start_parking_session(  # noqa: PLR0912, PLR0915
+        self, license_plate: str, end_time: str
+    ) -> bool:
         """
         Start een parkeerssessie voor een kenteken tot een bepaalde tijd.
 
@@ -411,13 +421,12 @@ class ParkeeractieClient:
                         license_plate,
                         result,
                     )
-                return False
-
             except json.JSONDecodeError:
                 _LOGGER.exception(
                     "Ongeldig JSON antwoord bij starten parkeerssessie: %s",
                     response[:200],
                 )
+            else:
                 return False
 
         except (TimeoutError, aiohttp.ClientError):
