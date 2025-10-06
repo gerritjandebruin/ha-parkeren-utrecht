@@ -12,7 +12,7 @@ class BaseCoordinatorEntity(CoordinatorEntity[ParkeeractieCoordinator]):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: ParkeeractieCoordinator, entry):
+    def __init__(self, coordinator: ParkeeractieCoordinator, entry) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._attr_device_info = DeviceInfo(

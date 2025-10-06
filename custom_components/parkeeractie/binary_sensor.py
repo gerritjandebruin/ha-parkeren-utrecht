@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import (
 from .base import BaseCoordinatorEntity
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coord = hass.data["parkeeractie"][entry.entry_id]
     async_add_entities([ParkeerProbleemSensor(coord, entry)])
 
@@ -18,7 +18,7 @@ class ParkeerProbleemSensor(BaseCoordinatorEntity, BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         return f"{self.entry_id}_parkeren_problem"
 
     @property

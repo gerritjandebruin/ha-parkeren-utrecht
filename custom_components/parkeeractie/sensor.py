@@ -16,7 +16,7 @@ def _hhmmss_to_seconds(raw: str | None) -> int | None:
         return None
 
 
-async def async_setup_entry(hass, entry, add_entities):
+async def async_setup_entry(hass, entry, add_entities) -> None:
     coordinator = hass.data["parkeeractie"][entry.entry_id]
     add_entities(
         [
@@ -33,7 +33,7 @@ class SaldoSensor(BaseCoordinatorEntity, SensorEntity):
     _attr_suggested_display_precision = 2
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         return f"{self.entry_id}_saldo"
 
     @property
@@ -48,7 +48,7 @@ class TimeRemainingSensor(BaseCoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:timer-outline"
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         return f"{self.entry_id}_time_remaining"
 
     @property

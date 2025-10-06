@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import html as ihtml
 import json
 import logging
@@ -41,15 +42,13 @@ def _load_relaxed(s: str) -> dict:
 
 def _ensure_www():
     www_dir = "/config/www"
-    try:
+    with contextlib.suppress(Exception):
         os.makedirs(www_dir, exist_ok=True)
-    except Exception:
-        pass
     return www_dir
 
 
 class ParkeeractieClient:
-    def __init__(self, session: ClientSession, username: str, password: str):
+    def __init__(self, session: ClientSession, username: str, password: str) -> None:
         self._session = session
         self._username = username
         self._password = password
@@ -116,8 +115,9 @@ class ParkeeractieClient:
                     path,
                 )
             except Exception as e:
-                _LOGGER.error("Kon debug HTML niet schrijven: %s", e)
-            raise ValueError("Kon login.init payload niet vinden.")
+                _LOGGER.exception("Kon debug HTML niet schrijven: %s", e)
+            msg = "Kon login.init payload niet vinden."
+            raise ValueError(msg)
 
         # 2) CSRF + captcha check
         soup = BeautifulSoup(html, "html.parser")
@@ -249,8 +249,9 @@ class ParkeeractieClient:
             soup = BeautifulSoup(html, "html.parser")
             token_el = soup.find("input", {"name": "__RequestVerificationToken"})
             if not token_el or not token_el.get("value"):
-                raise ValueError("CSRF-token niet gevonden op plan session pagina.")
-            csrf = token_el["value"]
+                msg = "CSRF-token niet gevonden op plan session pagina."
+                raise ValueError(msg)
+            token_el["value"]
 
             # Parse plan session payload
             payload = None
@@ -264,12 +265,14 @@ class ParkeeractieClient:
                         _LOGGER.debug("Payload parse error (%s): %s", regex.pattern, e)
 
             if not payload:
-                raise ValueError("Kon plan session payload niet vinden.")
+                msg = "Kon plan session payload niet vinden."
+                raise ValueError(msg)
 
             # 3) Vind de juiste permit
             permit_list = payload.get("permitList", [])
             if not permit_list:
-                raise ValueError("Geen parkeerproducten gevonden.")
+                msg = "Geen parkeerproducten gevonden."
+                raise ValueError(msg)
 
             selected_permit = None
             # Gebruik eerste actieve permit
@@ -278,14 +281,15 @@ class ParkeeractieClient:
                     selected_permit = permit
                     break
             if not selected_permit:
-                raise ValueError("Geen actieve parkeerproducten gevonden.")
+                msg = "Geen actieve parkeerproducten gevonden."
+                raise ValueError(msg)
 
             # 4) Bouw sessie data voor form POST
             # Controleer of de end_time al een datetime object is of string
             if isinstance(end_time, str) and "T" in end_time:
                 # ISO format datetime string, mogelijk aanpassen voor parkeerapp
                 try:
-                    dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+                    dt = datetime.fromisoformat(end_time)
                     # Parkeerapp verwacht mogelijk lokale tijd
                     formatted_time = dt.strftime("%Y-%m-%dT%H:%M:%S")
                 except ValueError:
@@ -410,7 +414,7 @@ class ParkeeractieClient:
                 return False
 
             except json.JSONDecodeError:
-                _LOGGER.error(
+                _LOGGER.exception(
                     "Ongeldig JSON antwoord bij starten parkeerssessie: %s",
                     response[:200],
                 )

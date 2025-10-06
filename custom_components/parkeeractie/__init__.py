@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN
 from .coordinator import ParkeeractieCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant, ServiceCall
 
 PLATFORMS: list[str] = ["sensor", "binary_sensor"]
 
@@ -21,7 +24,7 @@ START_PARKING_SESSION_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = ParkeeractieCoordinator(
         hass,
         username=entry.data["username"],
@@ -32,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     # Register services
-    async def start_parking_session(call: ServiceCall):
+    async def start_parking_session(call: ServiceCall) -> None:
         """Service om een parkeerssessie te starten."""
         license_plate = call.data["license_plate"]
         end_time = call.data["end_time"]
