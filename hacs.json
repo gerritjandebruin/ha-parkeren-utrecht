@@ -1,5 +1,13 @@
 {
-    "name": "Integration blueprint",
-    "homeassistant": "2025.2.4",
-    "hacs": "2.0.5"
+    "name": "Parkeren Utrecht",
+    "country": [
+        "NL"
+    ],
+    "domains": [
+        "sensor",
+        "binary_sensor"
+    ],
+    "homeassistant": "2024.1.0",
+    "iot_class": "Cloud Polling",
+    "render_readme": true
 }
