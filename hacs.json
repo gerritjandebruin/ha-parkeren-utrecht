@@ -4,6 +4,5 @@
         "NL"
     ],
     "homeassistant": "2024.1.0",
-    "issue_tracker": "https://github.com/gerritjandebruin/ha-parkeren-utrecht/issues",
     "render_readme": true
 }
