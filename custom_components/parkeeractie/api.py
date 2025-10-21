@@ -9,6 +9,7 @@ import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import aiohttp
 from aiohttp import ClientSession
@@ -24,27 +25,45 @@ _login_payload_re = re.compile(
 _customer_payload_re = re.compile(
     r"customerLayout\.init\([^,]+,\s*(['\"])(?P<payload>.+?)\1\)\s*;", re.DOTALL
 )
-_plan_payload_re = re.compile(
-    r"planSession\.init\(\s*(['\"])(?P<payload>.+?)\1\)\s*;", re.DOTALL
-)
+
+_DEFAULT_TZ = ZoneInfo("Europe/Amsterdam")
+
+
+def _format_utc(dt: datetime) -> str:
+    """Return an ISO string with millisecond precision and Z suffix."""
+    dt_utc = dt.astimezone(UTC).replace(microsecond=0)
+    return f"{dt_utc.strftime('%Y-%m-%dT%H:%M:%S')}.000Z"
 
 
 def _load_relaxed(s: str) -> dict:
+    """
+    Parse JSON that may be HTML-escaped or lightly malformed.
+
+    Tries a couple of safe variants before finally attempting a unicode_escape decode.
+    Avoids logging for each failed candidate to reduce noise; logs once on the final
+    fallback.
+    """
     s1 = ihtml.unescape(s)
-    for candidate in (
+    candidates = (
         s1,
         s1.replace(r"\\", "\\").replace(r"\"", '"').replace(r"\'", "'"),
-    ):
+    )
+    for candidate in candidates:
         try:
             return json.loads(candidate)
-        except (ValueError, json.JSONDecodeError) as e:
-            _LOGGER.debug("Failed to parse JSON candidate: %s", e)
-    return json.loads(s1.encode("utf-8").decode("unicode_escape"))
+        except (ValueError, json.JSONDecodeError):
+            # Silent per-candidate failure; we'll try the next strategy.
+            continue
+    try:
+        return json.loads(s1.encode("utf-8").decode("unicode_escape"))
+    except (ValueError, json.JSONDecodeError) as e:
+        _LOGGER.debug("Relaxed JSON parse fallback failed: %s", e)
+        raise
 
 
 def _ensure_www() -> str:
     """Ensure www directory exists and return its path."""
-    www_dir = "/config/www"
+    www_dir = "config/www"
     with contextlib.suppress(Exception):
         Path(www_dir).mkdir(parents=True, exist_ok=True)
     return www_dir
@@ -74,7 +93,9 @@ class ParkeeractieClient:
             _LOGGER.debug("POST %s -> %s (%s)", url, str(r.url), r.status)
             return text
 
-    async def _post_json(self, url: str, data: dict, referer: str) -> str:
+    async def _post_json(
+        self, url: str, data: dict, referer: str, extra_headers: dict | None = None
+    ) -> str:
         headers = {
             **HEADERS,
             "Referer": referer,
@@ -82,6 +103,8 @@ class ParkeeractieClient:
             "Content-Type": "application/json; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
         }
+        if extra_headers:
+            headers.update(extra_headers)
         async with self._session.post(
             url, headers=headers, json=data, allow_redirects=True
         ) as r:
@@ -157,24 +180,18 @@ class ParkeeractieClient:
         saldo, current_time = self._parse_saldo_and_time(html)
         if saldo is not None or current_time is not None:
             return saldo, current_time
-        # 4) Nog geen payload? Probeer plan-URL
-        html = await self._get(PLAN_URL)
-        saldo, current_time = self._parse_saldo_and_time(html)
-        if saldo is not None or current_time is not None:
-            return saldo, current_time
         msg = "Inloggen is mislukt of geen account gevonden."
         raise ValueError(msg)
 
     def _parse_saldo_and_time(self, html: str) -> tuple[float | None, str | None]:
         payload = None
-        for regex in (_customer_payload_re, _plan_payload_re):
-            m = regex.search(html)
-            if m:
-                try:
-                    payload = _load_relaxed(m.group("payload"))
-                    break
-                except (json.JSONDecodeError, UnicodeError) as e:
-                    _LOGGER.debug("Payload parse error (%s): %s", regex.pattern, e)
+        if m := _customer_payload_re.search(html):
+            try:
+                payload = _load_relaxed(m.group("payload"))
+            except (json.JSONDecodeError, UnicodeError) as e:
+                _LOGGER.debug(
+                    "Payload parse error (%s): %s", _customer_payload_re.pattern, e
+                )
 
         saldo = None
         current_time = None
@@ -226,209 +243,3 @@ class ParkeeractieClient:
                     list(payload.keys()) if isinstance(payload, dict) else "Not a dict",
                 )
         return saldo, current_time
-
-    async def start_parking_session(  # noqa: PLR0912, PLR0915
-        self, license_plate: str, end_time: str
-    ) -> bool:
-        """
-        Start een parkeerssessie voor een kenteken tot een bepaalde tijd.
-
-        Args:
-            license_plate: Het kenteken (bijv. "AB-123-CD")
-            end_time: Eindtijd in ISO format (bijv. "2025-10-06T23:00:00")
-
-        Returns:
-            True als de sessie succesvol is gestart, False anders
-
-        """
-        try:
-            # 1) Fresh login voor de parkeerssessie
-            _LOGGER.debug("Starting fresh login for parking session")
-            await self.login_and_fetch()
-
-            # 2) Verkrijg verse plan session pagina voor CSRF token
-            _LOGGER.debug("Fetching fresh plan session page")
-            html = await self._get(PLAN_URL)
-
-            # Check if we're actually logged in (look for user data)
-            if "userDisplayName" not in html:
-                _LOGGER.error("Not properly logged in - no user data found")
-                return False
-
-            # Parse CSRF token
-            soup = BeautifulSoup(html, "html.parser")
-            token_el = soup.find("input", {"name": "__RequestVerificationToken"})
-            if not token_el or not token_el.get("value"):
-                msg = "CSRF-token niet gevonden op plan session pagina."
-                raise ValueError(msg)
-            token_el["value"]
-
-            # Parse plan session payload
-            payload = None
-            for regex in (_customer_payload_re, _plan_payload_re):
-                m = regex.search(html)
-                if m:
-                    try:
-                        payload = _load_relaxed(m.group("payload"))
-                        break
-                    except (json.JSONDecodeError, UnicodeError) as e:
-                        _LOGGER.debug("Payload parse error (%s): %s", regex.pattern, e)
-
-            if not payload:
-                msg = "Kon plan session payload niet vinden."
-                raise ValueError(msg)
-
-            # 3) Vind de juiste permit
-            permit_list = payload.get("permitList", [])
-            if not permit_list:
-                msg = "Geen parkeerproducten gevonden."
-                raise ValueError(msg)
-
-            selected_permit = None
-            # Gebruik eerste actieve permit
-            for permit in permit_list:
-                if permit.get("status") == "Active":
-                    selected_permit = permit
-                    break
-            if not selected_permit:
-                msg = "Geen actieve parkeerproducten gevonden."
-                raise ValueError(msg)
-
-            # 4) Bouw sessie data voor form POST
-            # Controleer of de end_time al een datetime object is of string
-            if isinstance(end_time, str) and "T" in end_time:
-                # ISO format datetime string, mogelijk aanpassen voor parkeerapp
-                try:
-                    dt = datetime.fromisoformat(end_time)
-                    # Parkeerapp verwacht mogelijk lokale tijd
-                    formatted_time = dt.strftime("%Y-%m-%dT%H:%M:%S")
-                except ValueError:
-                    formatted_time = end_time
-            else:
-                formatted_time = str(end_time)
-
-            # 4) Bereid JSON data voor (zoals browser - uitgebreide payload)
-            # Genereer UTC timestamps in juiste formaat (.000Z)
-            start_time = datetime.now(UTC)
-
-            # Format end time correctly (.000Z suffix)
-            if "+00:00" in formatted_time:
-                end_time_formatted = formatted_time.replace("+00:00", ".000Z")
-            else:
-                end_time_formatted = f"{formatted_time}.000Z"
-
-            # Use realistic parking regime times (9 AM to 11 PM local time)
-            today = start_time.replace(hour=9, minute=0, second=0, microsecond=0)
-            regime_end = start_time.replace(hour=23, minute=0, second=0, microsecond=0)
-
-            session_data = {
-                "parkingSessionId": 0,
-                "permitId": selected_permit["id"],
-                "timeStartUtc": start_time.strftime("%Y-%m-%dT%H:%M:00.000Z"),
-                "timeEndUtc": end_time_formatted,
-                "statusId": 0,
-                "untilType": None,
-                "costMoney": None,
-                "costTime": None,
-                "parkingRegime": None,
-                "hourRate": None,
-                "lp": license_plate.upper().replace("-", ""),
-                "psRightId": None,
-                "garageCode": None,
-                "startTimeNow": False,  # False omdat we expliciete tijden geven
-                "endTimeParkingRegimeEnd": False,
-                "saveMode": True,
-                "newEndTimeString": None,
-                "moneyBalance": 0.0,
-                "moneyRemaining": None,
-                "timeRemaining": None,
-                "timeCostString": None,
-                "costTimeHours": "00:00:00",
-                "overMoneyLimit": False,
-                "overMoneyLimitText": None,
-                "overTimeLimit": False,
-                "overTimeLimitText": None,
-                "insufficientResources": False,
-                "insufficientResourcesText": None,
-                "unixDateTime": 0.0,
-                "regimeEndTime": regime_end.strftime("%Y-%m-%dT%H:%M:%S+02:00"),
-                "regimeStartTime": today.strftime("%Y-%m-%dT%H:%M:%S+02:00"),
-                "permitProductId": selected_permit.get("permitProductId", 33),
-                "canAddLp": True,
-                "currentMoney": None,
-                "currentTime": None,
-                "balanceResetTime": "",
-                "paidRegimePeriodMessage": "",
-                "garageSessionMessage": "",
-                "isUnlimitedPermit": False,
-                "overSessionHourLimit": False,
-                "overSessionHourLimitText": None,
-                "gapNotPassed": False,
-                "gapTooShortMessage": None,
-                "endTimeAdjusted": False,
-                "endTimeAdjustedText": None,
-                "maxStartEndSessionSpanOverLimit": False,
-                "maxStartEndSessionSpanOverLimitText": None,
-                "isUnlimitedTime": False,
-                "planSessionMoneyColumnVisible": False,
-                "activePermitsCount": 1,
-                "editMode": False,
-                "saldo": 0.0,
-                "isPermitOwner": True,
-                "startedForUser": 31195,
-                "currentPermitId": selected_permit["id"],
-                "customerPays": True,
-                "garageId": 0,
-            }
-
-            _LOGGER.debug("Sending parking session JSON data: %s", session_data)
-
-            # Debug: Log current cookies
-            cookies = {cookie.key: cookie.value for cookie in self._session.cookie_jar}
-            _LOGGER.debug("Current cookies: %s", list(cookies.keys()))
-
-            # 5) Start de parkeerssessie met JSON POST (zoals browser)
-            save_url = f"{BASE_URL}/Customer/PlanSession/StartParkingSession"
-            response = await self._post_json(save_url, session_data, PLAN_URL)
-
-            # Debug: Log de response om te zien wat we krijgen
-            _LOGGER.debug("StartParkingSession response: %s", response[:1000])
-
-            # 6) Parse JSON response
-            try:
-                result = json.loads(response)
-                if result.get("successful", False):
-                    _LOGGER.info(
-                        "Parkeerssessie succesvol gestart voor %s tot %s",
-                        license_plate,
-                        end_time,
-                    )
-                    return True
-
-                # Fout - log de notificaties
-                notifications = result.get("notifications", [])
-                if notifications:
-                    for notification in notifications:
-                        message = notification.get("message", "Onbekende fout")
-                        _LOGGER.error(
-                            "Parkeerssessie starten mislukt voor %s: %s",
-                            license_plate,
-                            message,
-                        )
-                else:
-                    _LOGGER.error(
-                        "Parkeerssessie starten mislukt voor %s: %s",
-                        license_plate,
-                        result,
-                    )
-            except json.JSONDecodeError:
-                _LOGGER.exception(
-                    "Ongeldig JSON antwoord bij starten parkeerssessie: %s",
-                    response[:200],
-                )
-            else:
-                return False
-
-        except (TimeoutError, aiohttp.ClientError):
-            _LOGGER.exception("Network fout bij starten parkeerssessie")
-            return False
