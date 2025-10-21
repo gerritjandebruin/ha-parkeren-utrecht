@@ -1,54 +1,24 @@
 # Home Assistant Parkeeractie Utrecht
 
-Deze Home Assistant integratie maakt het mogelijk om parkeerinformatie op te halen van de Parkeeractie Utrecht app en parkeerssessies te starten.
+This Home Assistant integration lets you retrieve parking information from the Parkeeractie Utrecht app and start parking sessions directly from Home Assistant.
 
-## Functionaliteit
+## Features
 
-### Sensoren
-- **Saldo**: Toont het huidige saldo op je parkeeraccount
-- **Tijd resterend**: Toont de resterende tijd van je parkeerproduct (in uren)
+### Sensors
+- **Balance**: Shows the current balance of your parking account
+- **Time Remaining**: Shows the remaining allowance of your parking permit (in hours)
 
-### Binary Sensoren
-- **Parkeerprobleem**: Geeft aan of er een parkeerprobleem is (geen geld of tijd)
+### Binary Sensors
+- **Parking Issue**: Indicates whether there is a parking issue (for example, no balance or remaining time)
 
-### Services
-- **start_parking_session**: Start een parkeerssessie voor een bepaald kenteken
+## Installation
 
-## Installatie
+1. Copy the `parkeeractie` folder to your `custom_components` directory
+2. Restart Home Assistant
+3. Go to Settings → Devices & Services → Add Integration
+4. Search for “Parkeeractie” and add the integration
+5. Enter your Parkeeractie login credentials
 
-1. Kopieer de `parkeeractie` folder naar je `custom_components` directory
-2. Herstart Home Assistant
-3. Ga naar Instellingen → Integraties → Integratie toevoegen
-4. Zoek naar "Parkeeractie" en voeg deze toe
-5. Voer je parkeeractie inloggegevens in
+## Configuration
 
-## Configuratie
-
-Na installatie zijn de sensoren en services automatisch beschikbaar. Je kunt automations maken om parkeerssessies te starten op basis van triggers zoals tijd, aanwezigheid, etc.
-
-File | Purpose | Documentation
--- | -- | --
-`.devcontainer.json` | Used for development/testing with Visual Studio Code. | [Documentation](https://code.visualstudio.com/docs/remote/containers)
-`.github/ISSUE_TEMPLATE/*.yml` | Templates for the issue tracker | [Documentation](https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository)
-`custom_components/integration_blueprint/*` | Integration files, this is where everything happens. | [Documentation](https://developers.home-assistant.io/docs/creating_component_index)
-`CONTRIBUTING.md` | Guidelines on how to contribute. | [Documentation](https://help.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-`LICENSE` | The license file for the project. | [Documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository)
-`README.md` | The file you are reading now, should contain info about the integration, installation and configuration instructions. | [Documentation](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax)
-`requirements.txt` | Python packages used for development/lint/testing this integration. | [Documentation](https://pip.pypa.io/en/stable/user_guide/#requirements-files)
-
-## How?
-
-1. Create a new repository in GitHub, using this repository as a template by clicking the "Use this template" button in the GitHub UI.
-1. Open your new repository in Visual Studio Code devcontainer (Preferably with the "`Dev Containers: Clone Repository in Named Container Volume...`" option).
-1. Rename all instances of the `integration_blueprint` to `custom_components/<your_integration_domain>` (e.g. `custom_components/awesome_integration`).
-1. Rename all instances of the `Integration Blueprint` to `<Your Integration Name>` (e.g. `Awesome Integration`).
-1. Run the `scripts/develop` to start HA and test out your new integration.
-
-## Next steps
-
-These are some next steps you may want to look into:
-- Add tests to your integration, [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) can help you get started.
-- Add brand images (logo/icon) to https://github.com/home-assistant/brands.
-- Create your first release.
-- Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
-- Submit your integration to [HACS](https://hacs.xyz/docs/publish/start).
+After installation the sensors are available automatically.
