@@ -3,11 +3,8 @@
     "country": [
         "NL"
     ],
-    "domains": [
-        "sensor",
-        "binary_sensor"
-    ],
     "homeassistant": "2024.1.0",
     "iot_class": "Cloud Polling",
+    "issue_tracker": "https://github.com/gerritjandebruin/ha-parkeren-utrecht/issues",
     "render_readme": true
 }
