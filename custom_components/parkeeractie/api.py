@@ -9,13 +9,15 @@ import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-import aiohttp
-from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
-from .const import BASE_URL, HEADERS, LOGIN_URL, PLAN_URL
+from .const import BASE_URL, HEADERS, LOGIN_URL
+
+if TYPE_CHECKING:
+    from aiohttp import ClientSession
 
 _LOGGER = logging.getLogger(__name__)
 
