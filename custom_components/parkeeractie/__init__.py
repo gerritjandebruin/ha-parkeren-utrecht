@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING
-
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
 
 from .const import DOMAIN
 from .coordinator import ParkeeractieCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant, ServiceCall
+    from homeassistant.core import HomeAssistant
 
 PLATFORMS: list[str] = ["sensor", "binary_sensor"]
 
