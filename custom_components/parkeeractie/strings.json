@@ -1,19 +1,31 @@
 {
-    "config": {
-      "step": {
-        "user": {
-          "title": "Parkeeractie inloggen",
-          "description": "Vul je e-mailadres en wachtwoord in.",
-          "data": {
-            "username": "E-mailadres",
-            "password": "Wachtwoord"
-          }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Parkeren Utrecht",
+        "description": "Log in with the account of the Utrecht parking app (parkeerapp.utrecht.nl).",
+        "data": {
+          "username": "Email address",
+          "password": "Password"
         }
-      },
-      "error": {
-        "auth": "Inloggen mislukt. Controleer je gegevens.",
-        "captcha_required": "reCAPTCHA is ingeschakeld; automatiseren niet mogelijk."
       }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the parking app.",
+      "invalid_auth": "Login failed. Check your email address and password.",
+      "captcha_required": "The parking app asks for a reCAPTCHA; logging in automatically is not possible right now."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "parking_problem": { "name": "Parking problem" }
+    },
+    "sensor": {
+      "saldo": { "name": "Balance" },
+      "time_remaining": { "name": "Time remaining" }
     }
   }
-  
+}

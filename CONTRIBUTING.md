@@ -44,7 +44,7 @@ People *love* thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
-Use [black](https://github.com/ambv/black) to make sure the code follows the style.
+Run `scripts/lint` (ruff) to format and lint the code.
 
 ## Test your code modification
 

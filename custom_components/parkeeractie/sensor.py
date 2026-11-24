@@ -1,102 +1,77 @@
-"""Sensor entities for Parkeeractie integration."""
+"""Sensors for Parkeren Utrecht."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import UnitOfTime
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .base import BaseCoordinatorEntity
+from .base import ParkeeractieEntity
+from .coordinator import ParkeeractieConfigEntry, ParkeeractieCoordinator
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-# Constants
-TIME_FORMAT_PARTS = 3  # Expected number of parts in HH:MM:SS format
+PARALLEL_UPDATES = 0
 
 
-def _hhmmss_to_seconds(raw: str | None) -> int | None:
-    """Convert HH:MM:SS string to seconds."""
-    if not isinstance(raw, str) or raw.count(":") != TIME_FORMAT_PARTS - 1:
+def hhmmss_to_seconds(raw: str | None) -> int | None:
+    """Convert an HH:MM:SS string to seconds."""
+    if not isinstance(raw, str):
         return None
     try:
         h, m, s = (int(x) for x in raw.split(":"))
-        return h * 3600 + m * 60 + s
-    except (ValueError, TypeError):
+    except ValueError:
         return None
+    return h * 3600 + m * 60 + s
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    add_entities: AddEntitiesCallback,
+    entry: ParkeeractieConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up sensor entities."""
-    coordinator = hass.data["parkeeractie"][entry.entry_id]
-    add_entities(
-        [
-            SaldoSensor(coordinator, entry),
-            TimeRemainingSensor(coordinator, entry),
-        ]
-    )
+    """Set up the sensors."""
+    coordinator = entry.runtime_data
+    async_add_entities([SaldoSensor(coordinator), TimeRemainingSensor(coordinator)])
 
 
-class SaldoSensor(BaseCoordinatorEntity, SensorEntity):
-    """Sensor showing parking account balance."""
+class SaldoSensor(ParkeeractieEntity, SensorEntity):
+    """Balance of the parking account."""
 
-    _attr_name = "Saldo"
+    _attr_translation_key = "saldo"
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
     _attr_suggested_display_precision = 2
 
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID for this sensor."""
-        return f"{self.entry_id}_saldo"
+    def __init__(self, coordinator: ParkeeractieCoordinator) -> None:
+        super().__init__(coordinator, "saldo")
 
     @property
     def native_value(self) -> float | None:
-        """Return the current balance."""
-        return self.coordinator.data.get("saldo")
+        return self.coordinator.data.saldo
 
 
-class TimeRemainingSensor(BaseCoordinatorEntity, SensorEntity):
-    """Sensor showing remaining parking time."""
+class TimeRemainingSensor(ParkeeractieEntity, SensorEntity):
+    """Remaining time of the active session or permit."""
 
-    _attr_name = "Tijd resterend"
+    _attr_translation_key = "time_remaining"
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.HOURS
-    _attr_icon = "mdi:timer-outline"
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator: ParkeeractieCoordinator) -> None:
+        super().__init__(coordinator, "time_remaining")
 
     @property
-    def unique_id(self) -> str:
-        """Return unique ID for this sensor."""
-        return f"{self.entry_id}_time_remaining"
-
-    @property
-    def native_value(self) -> float | None:
-        """Return remaining time in hours."""
-        raw = self.coordinator.data.get("current_time")
-        secs = _hhmmss_to_seconds(raw)
-        # Als tijd n.v.t. is, rapporteer 0 uren (en attribuut geeft n.v.t. aan)
-        if secs is None:
-            return 0
-        # Convert seconds to hours (rounded to 2 decimal places)
-        return round(secs / 3600, 2)
+    def native_value(self) -> float:
+        secs = hhmmss_to_seconds(self.coordinator.data.current_time)
+        return 0 if secs is None else round(secs / 3600, 2)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        raw = self.coordinator.data.get("current_time")
-        secs = _hhmmss_to_seconds(raw)
-        not_applicable = secs is None
-        if not_applicable:
-            secs = 0
+        raw = self.coordinator.data.current_time
         return {
             "raw": raw or "00:00:00",
-            "time_applicable": not not_applicable,
-            "display_format": raw or "00:00:00",
+            "time_applicable": hhmmss_to_seconds(raw) is not None,
         }

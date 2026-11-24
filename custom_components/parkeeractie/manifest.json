@@ -1,18 +1,12 @@
 {
   "domain": "parkeeractie",
-  "name": "Parkeeractie (Utrecht) scraper",
-  "codeowners": [
-    "@gerritjandebruin"
-  ],
+  "name": "Parkeren Utrecht",
+  "codeowners": ["@gerritjandebruin"],
   "config_flow": true,
-  "documentation": "https://github.com/gerritjandebruin/parkeeractie",
+  "documentation": "https://github.com/gerritjandebruin/ha-parkeren-utrecht",
+  "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/gerritjandebruin/ha-parkeren-utrecht/issues",
-  "loggers": [
-    "parkeeractie"
-  ],
-  "requirements": [
-    "beautifulsoup4==4.12.3"
-  ],
-  "version": "0.1.0"
+  "requirements": ["beautifulsoup4==4.12.3"],
+  "version": "0.2.0"
 }

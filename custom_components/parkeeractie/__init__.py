@@ -1,38 +1,35 @@
-"""Parkeeractie integration for Home Assistant."""
+"""The Parkeren Utrecht integration."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN
-from .coordinator import ParkeeractieCoordinator
+from .api import ParkeeractieClient
+from .coordinator import ParkeeractieConfigEntry, ParkeeractieCoordinator
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-
-PLATFORMS: list[str] = ["sensor", "binary_sensor"]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Parkeeractie from a config entry."""
-    coordinator = ParkeeractieCoordinator(
-        hass,
-        username=entry.data["username"],
-        password=entry.data["password"],
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ParkeeractieConfigEntry
+) -> bool:
+    """Set up an account from a config entry."""
+    client = ParkeeractieClient(
+        async_get_clientsession(hass),
+        entry.data[CONF_USERNAME],
+        entry.data[CONF_PASSWORD],
     )
+    coordinator = ParkeeractieCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
-
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-
+    entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload parkeeractie integration."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-
-    return unload_ok
+async def async_unload_entry(
+    hass: HomeAssistant, entry: ParkeeractieConfigEntry
+) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

@@ -11,7 +11,6 @@ To get your integration into the official HACS default repository:
 ✅ `manifest.json` with all required fields (you have this)
 ✅ `hacs.json` file (you have this)
 ✅ `README.md` documentation (you have this)
-✅ `info.md` for HACS display (you have this)
 ✅ Code passes linting (you have this)
 
 #### Steps:
