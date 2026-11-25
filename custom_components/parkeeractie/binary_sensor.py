@@ -1,70 +1,59 @@
-"""Binary sensor entities for Parkeeractie integration."""
+"""Binary sensors for Parkeren Utrecht."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .base import BaseCoordinatorEntity
+from .base import ParkeeractieEntity
+from .coordinator import ParkeeractieConfigEntry, ParkeeractieCoordinator
+from .sensor import hhmmss_to_seconds
 
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: ParkeeractieConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up binary sensor entities."""
-    coord = hass.data["parkeeractie"][entry.entry_id]
-    async_add_entities([ParkeerProbleemSensor(coord, entry)])
+    """Set up the binary sensors."""
+    async_add_entities([ParkingProblemSensor(entry.runtime_data)])
 
 
-class ParkeerProbleemSensor(BaseCoordinatorEntity, BinarySensorEntity):
-    """Binary sensor indicating parking problems."""
+class ParkingProblemSensor(ParkeeractieEntity, BinarySensorEntity):
+    """On when there is no balance or no time left."""
 
-    _attr_name = "Parkeerprobleem"
+    _attr_translation_key = "parking_problem"
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
 
-    @property
-    def unique_id(self) -> str:
-        """Return unique ID for this sensor."""
-        return f"{self.entry_id}_parkeren_problem"
+    def __init__(self, coordinator: ParkeeractieCoordinator) -> None:
+        super().__init__(coordinator, "parkeren_problem")
 
     @property
-    def is_on(self) -> bool | None:
-        """Return true if there is a parking problem."""
-        data = self.coordinator.data or {}
-        if not data:
-            return None  # vóór eerste refresh
-        saldo = data.get("saldo") or 0
-        current_time = data.get("current_time")
-        # PROBLEEM indien: geen geld óf geen tijd (00:00:00 of None)
-        no_money = saldo <= 0
-        no_time = current_time in (None, "00:00:00")
-        return bool(no_money or no_time)
+    def _reason(self) -> str:
+        data = self.coordinator.data
+        if (data.saldo or 0) <= 0:
+            return "geen_geld"
+        if not hhmmss_to_seconds(data.current_time):
+            return "geen_tijd"
+        return "geen"
+
+    @property
+    def is_on(self) -> bool:
+        return self._reason != "geen"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
-        d = self.coordinator.data or {}
+        data = self.coordinator.data
         return {
-            "saldo": d.get("saldo"),
-            "current_time": d.get("current_time"),
-            "reason": (
-                "geen_geld"
-                if (d.get("saldo") or 0) <= 0
-                else (
-                    "geen_tijd"
-                    if d.get("current_time") in (None, "00:00:00")
-                    else "geen"
-                )
-            ),
+            "saldo": data.saldo,
+            "current_time": data.current_time,
+            "reason": self._reason,
         }

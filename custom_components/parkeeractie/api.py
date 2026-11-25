@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import contextlib
 import html as ihtml
 import json
 import logging
 import re
-from datetime import UTC, datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
-from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
@@ -27,14 +23,6 @@ _login_payload_re = re.compile(
 _customer_payload_re = re.compile(
     r"customerLayout\.init\([^,]+,\s*(['\"])(?P<payload>.+?)\1\)\s*;", re.DOTALL
 )
-
-_DEFAULT_TZ = ZoneInfo("Europe/Amsterdam")
-
-
-def _format_utc(dt: datetime) -> str:
-    """Return an ISO string with millisecond precision and Z suffix."""
-    dt_utc = dt.astimezone(UTC).replace(microsecond=0)
-    return f"{dt_utc.strftime('%Y-%m-%dT%H:%M:%S')}.000Z"
 
 
 def _load_relaxed(s: str) -> dict:
@@ -63,14 +51,6 @@ def _load_relaxed(s: str) -> dict:
         raise
 
 
-def _ensure_www() -> str:
-    """Ensure www directory exists and return its path."""
-    www_dir = "config/www"
-    with contextlib.suppress(Exception):
-        Path(www_dir).mkdir(parents=True, exist_ok=True)
-    return www_dir
-
-
 class ParkeeractieClient:
     """Client for interacting with the Parkeeractie Utrecht API."""
 
@@ -93,25 +73,6 @@ class ParkeeractieClient:
         ) as r:
             text = await r.text()
             _LOGGER.debug("POST %s -> %s (%s)", url, str(r.url), r.status)
-            return text
-
-    async def _post_json(
-        self, url: str, data: dict, referer: str, extra_headers: dict | None = None
-    ) -> str:
-        headers = {
-            **HEADERS,
-            "Referer": referer,
-            "Origin": BASE_URL,
-            "Content-Type": "application/json; charset=UTF-8",
-            "X-Requested-With": "XMLHttpRequest",
-        }
-        if extra_headers:
-            headers.update(extra_headers)
-        async with self._session.post(
-            url, headers=headers, json=data, allow_redirects=True
-        ) as r:
-            text = await r.text()
-            _LOGGER.debug("POST JSON %s -> %s (%s)", url, str(r.url), r.status)
             return text
 
     async def login_and_fetch(self) -> tuple[float | None, str | None]:
@@ -137,18 +98,7 @@ class ParkeeractieClient:
             if saldo is not None or current_time is not None:
                 return saldo, current_time
 
-            # Nog steeds geen login/init en geen ingelogde payload -> debugdump + error
-            path = Path(_ensure_www()) / "parkeeractie_login_debug.html"
-            try:
-                path.write_text(html, encoding="utf-8")
-                _LOGGER.error(
-                    "Kon login.init payload niet vinden. "
-                    "HTML opgeslagen naar %s "
-                    "(open via /local/parkeeractie_login_debug.html)",
-                    path,
-                )
-            except Exception:
-                _LOGGER.exception("Kon debug HTML niet schrijven")
+            _LOGGER.debug("Login page without login.init payload: %s", html[:2000])
             msg = "Kon login.init payload niet vinden."
             raise ValueError(msg)
 

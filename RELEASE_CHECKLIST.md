@@ -17,7 +17,6 @@
 
 ## ✅ Documentation
 - [x] `README.md` exists
-- [x] `info.md` created for HACS
 - [x] `PUBLISHING.md` guide created
 - [ ] Add screenshots to README (optional)
 - [ ] Add example automations
@@ -55,7 +54,6 @@ Current version: 0.1.0 ✅
 - [ ] Test manual installation
 - [ ] Verify config flow works
 - [ ] Verify sensors appear
-- [ ] Test the start_parking_session service
 
 ### 5. Create GitHub Release
 ```bash
