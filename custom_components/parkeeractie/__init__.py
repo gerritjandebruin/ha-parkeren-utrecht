@@ -17,7 +17,7 @@ async def async_setup_entry(
 ) -> bool:
     """Set up an account from a config entry."""
     if entry.unique_id is None:
-        # Entries from before 0.2.0 have no unique_id.
+        # Entries from before 1.2.0 have no unique_id.
         hass.config_entries.async_update_entry(
             entry, unique_id=entry.data[CONF_USERNAME].strip().lower()
         )
