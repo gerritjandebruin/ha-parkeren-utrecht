@@ -53,7 +53,7 @@ class ParkeeractieConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             try:
                 await client.login_and_fetch()
-            except (ClientError, TimeoutError):
+            except ClientError, TimeoutError:
                 errors["base"] = "cannot_connect"
             except ValueError as err:
                 errors["base"] = (

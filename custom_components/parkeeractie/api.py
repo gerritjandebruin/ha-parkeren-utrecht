@@ -41,7 +41,7 @@ def _load_relaxed(s: str) -> dict:
     for candidate in candidates:
         try:
             return json.loads(candidate)
-        except (ValueError, json.JSONDecodeError):
+        except ValueError:  # JSONDecodeError is a ValueError
             # Silent per-candidate failure; we'll try the next strategy.
             continue
     try:
